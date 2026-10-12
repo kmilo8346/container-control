@@ -1,7 +1,8 @@
+import { ChafaPreview } from './chafa-preview'
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useSearchParams } from 'react-router-dom'
 import { KeyRound, Layers, LogOut } from 'lucide-react'
-import { Dashboard } from './App'
+import { Gallery, GalleryLogs } from './gallery'
 import { API_URL, AuthProvider, useAuth } from './auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,7 +42,7 @@ function Layout() {
       <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-5" aria-label="Main navigation">
         <Link to="/" className="flex items-center gap-3 font-semibold"><Layers className="size-5" /> Container Control</Link>
         <div className="flex items-center gap-4 text-sm">
-          <Link to="/" className="text-muted-foreground hover:text-foreground">Containers</Link>
+          <Link to="/" className="text-muted-foreground hover:text-foreground">Paintings</Link>
           <span className="text-muted-foreground">{user.login}</span>
           <Button variant="ghost" onClick={() => { void logout().catch(() => setError(true)) }}><LogOut /> Sign out</Button>
         </div>
@@ -59,11 +60,16 @@ function Navigation() {
   return <Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/authorize" element={<Authorize />} />
-    <Route element={<Layout />}><Route index element={<Dashboard />} /></Route>
+    <Route element={<Layout />}><Route index element={<Gallery />} /><Route path="paintings/logs" element={<GalleryLogs />} /></Route>
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 }
 
 export default function AppRouter() {
-  return <BrowserRouter><AuthProvider><Navigation /></AuthProvider></BrowserRouter>
+  return <BrowserRouter><Routes>
+    {import.meta.env.DEV && <Route path="/chafa-preview" element={<ChafaPreview />} />}
+    {import.meta.env.DEV && <Route path="/demo" element={<Navigate to="/" replace />} />}
+    {import.meta.env.DEV && <Route path="/demo/logs" element={<Navigate to="/" replace />} />}
+    <Route path="*" element={<AuthProvider><Navigation /></AuthProvider>} />
+  </Routes></BrowserRouter>
 }

@@ -59,6 +59,14 @@ describe('GitHub authentication', () => {
     await request(app.getHttpServer()).get('/auth/me').set('Cookie', session.split(';')[0]).expect(200).expect(({ body }) => { expect(body.login).toBe('test-user'); });
   });
 
+  it('protects the catalog and container endpoints', async () => {
+    await request(app.getHttpServer()).get('/paintings').expect(401);
+    const token = await jwt.signAsync({ sub: 'untrusted' }, { audience: 'container-control' });
+    await request(app.getHttpServer()).get('/paintings').set('Cookie', `container_session=${token}`).expect(403);
+    const owner = await jwt.signAsync({ sub: process.env.OWNER_GITHUB_ID ?? '18169079' }, { audience: 'container-control' });
+    await request(app.getHttpServer()).get('/paintings').set('Cookie', `container_session=${owner}`).expect(200).expect(({body}) => { expect(body).toHaveLength(10); });
+  });
+
   it('requires our web origin to clear the session cookie', async () => {
     await request(app.getHttpServer()).post('/auth/logout').set('Origin', 'https://other.example').expect(403);
     const result = await request(app.getHttpServer()).post('/auth/logout').set('Origin', 'http://localhost:5173').expect(201);
