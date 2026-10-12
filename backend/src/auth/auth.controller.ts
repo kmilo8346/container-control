@@ -6,6 +6,7 @@ import type { Request, Response, CookieOptions } from 'express';
 export const webUrl = process.env.WEB_URL ?? 'http://localhost:5173';
 const callback = process.env.GITHUB_CALLBACK_URL ?? 'http://localhost:3000/auth/github/callback';
 const options: CookieOptions = { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' };
+const sessionOptions: CookieOptions = { ...options, sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' };
 const sessionCookie = 'container_session';
 const flowCookie = 'github_flow';
 
@@ -47,7 +48,7 @@ export class AuthController {
       if (!profileResponse.ok || !Number.isInteger(profile.id) || typeof profile.login !== 'string') throw new UnauthorizedException();
       const user: User = { id: profile.id, login: profile.login, name: profile.name, avatarUrl: profile.avatar_url };
       const session = await this.jwt.signAsync({ sub: String(user.id), user }, { audience: 'container-control', expiresIn: '8h' });
-      res.cookie(sessionCookie, session, { ...options, maxAge: 8 * 60 * 60 * 1000 });
+      res.cookie(sessionCookie, session, { ...sessionOptions, maxAge: 8 * 60 * 60 * 1000 });
       return res.redirect(webUrl);
     } catch {
       return res.redirect(`${webUrl}/login?error=github_failed`);
@@ -65,7 +66,7 @@ export class AuthController {
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     if (req.headers.origin !== new URL(webUrl).origin) throw new ForbiddenException();
-    res.clearCookie(sessionCookie, options);
+    res.clearCookie(sessionCookie, sessionOptions);
     return { status: 'ok' };
   }
 }
