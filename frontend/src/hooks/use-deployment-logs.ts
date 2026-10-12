@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { galleryClient } from '@/clients/gallery-client'
+import { parsePaintingOutput } from './painting-output'
 
 export function useDeploymentLogs(id?: string, painting?: string) {
   const [lines, setLines] = useState<string[]>([])
@@ -21,19 +22,7 @@ export function useDeploymentLogs(id?: string, painting?: string) {
         const deployment = await galleryClient.getDeployment(id!)
         const logs = await galleryClient.getLogs(id!)
         const output = logs.deploymentLogs.flatMap((l) => l.message.split('\n'))
-        const legacyMarker = output.find((line) => line.startsWith('PAINTING_START:'))
-        if (legacyMarker && legacyMarker !== `PAINTING_START:${painting}`) {
-          throw new Error(
-            'The runner printed a different painting. Set its Docker image to kmilo8346/painting-runner:v3 in Railway and start this painting again.',
-          )
-        }
-        const start = output.findIndex(
-          (line) => line === 'PAINTING_START' || line === `PAINTING_START:${painting}`,
-        )
-        const end = output.findIndex(
-          (line, i) =>
-            i > start && (line === 'PAINTING_END' || line === `PAINTING_END:${painting}`),
-        )
+        const artwork = parsePaintingOutput(output, painting)
         if (active) {
           setStatus(deployment.status)
           setError('')
@@ -43,18 +32,8 @@ export function useDeploymentLogs(id?: string, painting?: string) {
             '--- Runtime logs ---',
             ...output,
           ])
-          setLines(
-            start < 0
-              ? []
-              : output
-                  .slice(start + 1, end < 0 ? undefined : end)
-                  .filter(
-                    (l) =>
-                      !l.startsWith('PAINTING_') &&
-                      !['Starting Container', 'Stopping Container'].includes(l.trim()),
-                  ),
-          )
-          setComplete(end >= 0)
+          setLines(artwork.lines)
+          setComplete(artwork.complete)
         }
       } catch (e) {
         if (active) setError((e as Error).message)

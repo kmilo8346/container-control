@@ -4,6 +4,7 @@ import { GalleryToolbar } from '@/components/gallery-toolbar'
 import { PaintingActions } from '@/components/painting-actions'
 import { PageHeading } from '@/components/page-heading'
 import { ErrorMessage } from '@/components/error-message'
+import { parsePaintingOutput } from '@/hooks/painting-output'
 import { useDeploymentLogs } from '@/hooks/use-deployment-logs'
 import { galleryClient } from '@/clients/gallery-client'
 import { useEffect, useState } from 'react'
@@ -79,7 +80,8 @@ export function GalleryPage() {
       const marker = logs.deploymentLogs
         .flatMap((l) => l.message.split('\n'))
         .find((l) => l === 'PAINTING_START' || l.startsWith('PAINTING_START:'))
-      if (!marker)
+      const output = logs.deploymentLogs.flatMap((log) => log.message.split('\n'))
+      if (!marker && parsePaintingOutput(output).lines.length === 0)
         throw new Error(
           'The running deployment has not identified its painting yet. Try again shortly.',
         )
@@ -89,7 +91,7 @@ export function GalleryPage() {
           ...current,
           closed: false,
           painting:
-            readRun()?.id === current.id ? readRun()!.painting : (marker.split(':')[1] ?? ''),
+            readRun()?.id === current.id ? readRun()!.painting : (marker?.split(':')[1] ?? ''),
         }),
       )
       window.dispatchEvent(new Event('painting-selection'))
